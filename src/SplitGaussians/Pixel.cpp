@@ -56,7 +56,7 @@ void Pixel::update(bool updateMask, double * rgb){
 	}
 }
 
-void Pixel::initialiseBackground(double weight, double * means, double std_dev){
+void Pixel::insertBackgroundGaussian(double weight, double * means, double std_dev){
 	BackgroundGaussian newGaussian;
 	newGaussian.initialise(weight, means, std_dev);
 	bgGaussians.push_back(newGaussian);

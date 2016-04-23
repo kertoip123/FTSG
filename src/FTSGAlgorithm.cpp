@@ -44,21 +44,23 @@ void FTSGAlgorithm :: update(const Mat & input, Mat & result, Mat & background, 
 		return;
 	}
 
+	bool largeChange;
 	fluxTensor->update(input, flux);
-	splitGaussian->detection(input, background, foreground);
+	splitGaussian->detection(input, background, foreground, &largeChange);
 
 	Mat staticForeground = Mat(input.size(), CV_8U);
-	Mat fusion_result = Mat(input.size(), CV_8U);
+	Mat fusionResult = Mat(input.size(), CV_8U);
 
-	fusion(flux, background, foreground, fusion_result, staticForeground);
+	fusion(flux, background, foreground, fusionResult, staticForeground);
 
 	// revealed bg detection
 	Mat revealed = Mat(input.size(), CV_8U);
 
-	gaussianUpdate(input, revealed);
+	gaussianUpdate(input, revealed, largeChange);
 
 	//temp
-	result = fusion_result.clone();
+	result = fusionResult.clone();
+	//result = staticForeground.clone();
 
 }
 
@@ -112,7 +114,7 @@ void FTSGAlgorithm :: fusion(const Mat & flux, const Mat & background, const Mat
 	}
 }
 
-void FTSGAlgorithm :: gaussianUpdate(const Mat & input, const Mat & revealed){
+void FTSGAlgorithm :: gaussianUpdate(const Mat & input, const Mat & revealed, bool largeChange){
 
 	double input_rgb[RGB_COMPONENTS_NUM];
 
@@ -136,6 +138,8 @@ void FTSGAlgorithm :: gaussianUpdate(const Mat & input, const Mat & revealed){
 
 	    	splitGaussian->update(row, col, updateMask[row][col], input_rgb);
 
+	    	if(largeChange)
+	    		splitGaussian->addNewGaussian(row, col, 0.2, input_rgb, 15);
 	    	//insert/delete gaussians
 
 	    }

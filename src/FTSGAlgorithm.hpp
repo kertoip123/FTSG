@@ -35,7 +35,7 @@ private:
 
 	void fusion(const Mat & flux, const Mat & background, const Mat & foreground, Mat & fusion, Mat & staticFg);
 
-	void gaussianUpdate(const Mat & input, const Mat & revealed);
+	void gaussianUpdate(const Mat & input, const Mat & revealed, bool largeChange);
 
 };
 

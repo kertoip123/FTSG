@@ -25,10 +25,12 @@ class SplitGaussian
         void backgroundInit(int row, int col, uchar * rgb);
         void foregroundInit(int row, int col, uchar * rgb);
 
-        void detection(const Mat & input, Mat & background, Mat & foreground);
+        void detection(const Mat & input, Mat & background, Mat & foreground, bool * isLargeChange);
         void update(int x, int y, bool updateFlag, double * rgb);
 
         void initialize(const Mat & input);
+
+        void addNewGaussian(int x, int y, double weight, double * means, double sd);
 
 };
 

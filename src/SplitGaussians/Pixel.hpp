@@ -17,7 +17,7 @@ class Pixel
 
     public:
 
-        void initialiseBackground(double weight, double * means, double std_dev);
+        void insertBackgroundGaussian(double weight, double * means, double std_dev);
         void initialiseForeground(double * means);
 
         bool isForeground(double * rgb);

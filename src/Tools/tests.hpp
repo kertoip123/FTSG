@@ -3,7 +3,7 @@
 
 #include <string>
 
-#define TEST_GROUP      0
+#define TEST_GROUP      1
 
 // baseline
 #if TEST_GROUP == 0
