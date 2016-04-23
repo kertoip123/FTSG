@@ -8,7 +8,7 @@ using namespace std;
 using namespace cv;
 
 const string INPUT = "Input";
-const string FLUX_TENSOR = "Flux Tensor result";
+const string RESULT = "FTSG result";
 const string BACKGROUND = "Background";
 const string FOREGROUND = "Foreground";
 

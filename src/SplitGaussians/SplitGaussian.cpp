@@ -66,8 +66,8 @@ void SplitGaussian::detection(const Mat & input, Mat & background, Mat & foregro
 	    	input_rgb[1] = (double)*input_pixel_ptr++;
 	    	input_rgb[0] = (double)*input_pixel_ptr++;
 
-	    	fg_pixel = (pixels[row][col].isForeground(input_rgb)) ? WHITE : BLACK;
 	    	bg_pixel = (pixels[row][col].isBackground(input_rgb)) ? BLACK : WHITE;
+	    	fg_pixel = (pixels[row][col].isForeground(input_rgb)) ? WHITE : BLACK;
 
 	    	*background_pixel_ptr++ = bg_pixel;
 	    	*foreground_pixel_ptr++ = fg_pixel;
@@ -92,7 +92,7 @@ void SplitGaussian::initialize(const Mat & input){
 	    	input_rgb[1] = (double)*input_pixel_ptr++;
 	    	input_rgb[0] = (double)*input_pixel_ptr++;
 
-	    	pixels[row][col].initialiseForeground(input_rgb);
+	    	//pixels[row][col].initialiseForeground(input_rgb);
 	    	pixels[row][col].initialiseBackground(0.2, input_rgb, 10);
 
 	    }

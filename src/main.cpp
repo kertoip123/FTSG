@@ -9,13 +9,11 @@
 #include "FTSGAlgorithm.hpp"
 #include "tools/file_name_generator.hpp"
 #include "tools/window_manager.hpp"
+#include "tools/tests.hpp"
 
 
 using namespace cv;
 using namespace std;
-
-const string input_path = "tests/highway/input";
-const int frame_num = 1700;
 
 
 int main(int argc, char** argv)
@@ -24,7 +22,7 @@ int main(int argc, char** argv)
     ftsg.setFluxTensorParam(30,5,5,5,5);
     ftsg.setSplitGaussianParam(0.004, 0.5, 3, 20, 0.1);
 
-	FileNameGenerator input_file_name_generator(input_path+"/in", JPG);
+	FileNameGenerator input_file_name_generator(input_frame_prefix, JPG);
 	//FileNameGenerator ground_truth_file_name_generator(gt_frame_prefix, PNG);
 
     initialize_windows();
@@ -44,7 +42,7 @@ int main(int argc, char** argv)
 
         ftsg.update(input_frame, result_frame, bg_frame, fg_frame, flux_output_frame);
 
-        update_windows(4, &input_frame, &flux_output_frame, &bg_frame, &fg_frame);
+        update_windows(4, &input_frame, &result_frame, &bg_frame, &fg_frame);
 
 
         if(waitKey(1) != -1)

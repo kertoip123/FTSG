@@ -64,9 +64,6 @@ void FTSGAlgorithm :: update(const Mat & input, Mat & result, Mat & background, 
 
 void FTSGAlgorithm :: fusion(const Mat & flux, const Mat & background, const Mat & foreground, Mat & fusion, Mat & staticFg)
 {
-	staticFg.setTo(Scalar(BLACK,BLACK,BLACK));
-	fusion.setTo(Scalar(BLACK,BLACK,BLACK));
-
 	const uchar * bg_pixel_ptr;
 	const uchar * fg_pixel_ptr;
 	const uchar * flux_pixel_ptr;
@@ -90,7 +87,7 @@ void FTSGAlgorithm :: fusion(const Mat & flux, const Mat & background, const Mat
 	    {
 	       flux_pixel = *flux_pixel_ptr++;
 	       bg_pixel = *bg_pixel_ptr++;
-	       fg_pixel = *bg_pixel_ptr++;
+	       fg_pixel = *fg_pixel_ptr++;
 
 	       bg = (bg_pixel == WHITE);
 	       fg = (fg_pixel == WHITE);
@@ -103,9 +100,13 @@ void FTSGAlgorithm :: fusion(const Mat & flux, const Mat & background, const Mat
 
 	       if((ff && bg) || fs)
 	    	   *fusion_pixel_ptr++ = WHITE;
+	       else
+	    	   *fusion_pixel_ptr++ = BLACK;
 
 	       if(fs)
 	    	   *static_pixel_ptr++ = WHITE;
+	       else
+	    	   *static_pixel_ptr++ = BLACK;
 
 	    }
 	}

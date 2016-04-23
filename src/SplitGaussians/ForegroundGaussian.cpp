@@ -41,9 +41,7 @@ bool ForegroundGaussian::checkPixelMatch(double *rgb) // max((I-u)-mean)^2 - T_F
 		return false;
 
 	double dist = malahidanDistance(rgb, mean, RGB_COMPONENTS_NUM);
-
-	// return dist < T_F*T_F;
-	return dist > T_F*T_F;
+	return dist < T_F*T_F;
 	/*
 	double diff[RGB_COMPONENTS_NUM];
 	double max;
