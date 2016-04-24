@@ -2,8 +2,16 @@
 #define _TESTS_HPP_
 
 #include <string>
+#include <opencv2/core/core.hpp>
+
+using namespace cv;
+using namespace std;
 
 #define TEST_GROUP      1
+
+#define COEF_LOG_ON      1
+#define COEF_LOG_OFF     0
+#define COUT if (COEF_LOG_ON) cout
 
 // baseline
 #if TEST_GROUP == 0
@@ -333,5 +341,7 @@ const string gt_frame_prefix = "tests/nightVideos/winterStreet/groundtruth/gt";
 
 #endif
 
+void count_coefficients(Mat & result, Mat & gt_frame);
+void print_metrics(void);
 
 #endif
