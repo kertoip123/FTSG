@@ -7,7 +7,7 @@
 using namespace cv;
 using namespace std;
 
-#define TEST_GROUP      1
+#define TEST_GROUP	0
 
 #define COEF_LOG_ON      1
 #define COEF_LOG_OFF     0
