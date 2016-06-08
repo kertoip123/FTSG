@@ -14,6 +14,7 @@
 \usepackage{amsmath}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
+\usepackage{tabto}
 
 \frenchspacing
 
@@ -21,7 +22,7 @@
 \titlelabel{\thetitle.\quad}
 
 \begin{document}
-	\title{PSRA - raport  \\  Algorytm Flux Tensor with Split Gaussian models}
+	\title{Programowo - Sprzętowa Realizacja Algorytmów -- raport  \\  Algorytm Flux Tensor with Split Gaussian models}
 	\author{Piotr Janus, Kamil Piszczek}
 	\date{}
 	\maketitle
@@ -316,5 +317,54 @@ Opisywana metoda wykorzystuje trzy obrazy: wejściowy, model tła oraz maskę bi
 \end{figure}
 
 Na rysunku \ref{stoppedObj} umieszczone zostały w pierwszym rzędzie kolejno: obrazek wejściowy, model tła oraz maska otrzymana przez model pierwszoplanowy. W~rzędzie drugim znajdują się obrazy po zastosowaniu detekcji krawędzi. Przedstawiają one zbliżenie na obszar, który został zakwalifikowany jako statyczny przez model pierwszoplanowy i konieczne jest zastosowanie algorytmu detekcji. Jak łatwo zauważyć krawędzie modelu pierwszoplanowego pokrywają się z~krawędziami obrazu wejściowego. Zatem obszar ten jest obiektem statycznym. Rysunek \ref{revBg} przedstawia analogiczną sytuację, jednak w~tym przypadku krawędzie modelu tła i modelu pierwszoplanowego są zbliżone, zatem obszar ten należy interpretować jako odsłonięty fragment tła. Takie działanie pozwala wyeliminować obszary błędnie zakwalifikowane, na podstawie modelu pierwszego planu, jako tło.
+
+\section{Testy}
+
+Ocena jakości procesu segmentacji obiektów pierwszoplanowych ze statycznej kamery jest stosunkowo prosta. Z natury działania algorytmu \textit{FTSG} wynika, że każdy piksel jest klasyfikowany do jednego z dwóch zbiorów: obiektów pierwszoplanowych lub tła. Zatem do oceny działania algorytmu wystarczyło zastosować test binarny. 
+
+Do oceny zastosowano sekwencje testowe ze zbioru dostępnego na stronie \textit{http://www.
+changedetection.net/}. Zbiór testowy zawiera również klatki referencyjne
+(ang. \textit{ground truth}), które stanowiły punkt odniesienia do oceny algorytmu \textit{FTSG}. Każda z nich była wzorcowym przekształceniem obrazu wejściowego na wyjściowy, na którym kolorem białym wyróżniono obiekty pierwszego planu. Dodatkowo sekwencje testowe należało oceniać od pewnego ustalonego numeru klatki. Dla każdego testu był on inny.
+
+Na podstawie porównania wszystkich ramek wyjściowych testowanej metody oraz odpowiadających im wzorców wyznaczane są następujące wartości (składowe testu klasyfikacji binarnej):
+\begin{itemize}
+	\item$\small TP$ -- liczba pikseli poprawnie zakwalifikowanych jako pierwszy plan (ang. \textit{true positive})
+	\item $\small TN$ -- liczba pikseli poprawnie zakwalifikowanych jako tło (ang. \textit{true negative})
+	\item $\small FN$ -- liczba pikseli błędnie zakwalifikowanych jako tło (ang. \textit{false negative})
+	\item $\small FP$ -- liczba pikseli błędnie zakwalifikowanych jako pierwszy plan (ang. \textit{false positive})\\
+\end{itemize}
+
+\noindent Po obliczeniu wszystkich czterech współczynników dla danej sekwencji wyznacza się 7 wskaźników, które określają dokładność metody:
+%
+\TabPositions{0.45\linewidth}
+\begin{enumerate}%[nolistsep]
+	\item \textit{Recall (Re)} : \tab \small{$TP/(TP+FN)$}
+	\item \textit{Specificity (Spec)} : \tab \small{$TN/(TN+FP)$}
+	\item \textit{False Positive Rate (FPR)} : \tab \small{$FP/(FP + TN)$}
+	\item \textit{False Negative Rate (FNR)} : \tab \small{$FN/(FN + TP)$}
+	\item \textit{Percentage of Wrong Classifications (PWC)} : \tab \small{$100(FN + FP)/(TP + FN + FP + TN)$}
+	\item \textit{Precision (Pr)} : \tab \small{$TP/(TP + FP)$}
+	\item \textit{F-measure (F1)} : \tab \small{$2\frac{P_r*R_e}{P_r+R_r}$}\\
+\end{enumerate}
+
+Do weryfikacji modelu programowego algorytmu stworzone zostało automatyczne środowisko testowe (w~\textit{Pythonie}). Dla każdego testu wykonywane były następujące czynności:
+
+\begin{itemize}
+	\item Podmiana makra w kodzie modelu programowego, definiującego wybraną sekwencje testową (domyślnie wybrana była pierwsza sekwencja testowa).
+	\item Ponowna kompilacja modelu programowego.
+	\item Uruchomienie modelu programowego dla wybranej sekwencji testowej.
+	\item Po zakończeniu testu, zapamiętanie otrzymanych współczynników ze standardowego wyjścia uruchamianego programu (\textit{TP, TN, FP, FN}).
+
+\end{itemize}
+
+\noindent Po przeprowadzeniu testów dla wszystkich sekwencji testowych generowany był raport zawierający współczynniki jakości każdej sekwencji testowej. Dana zapisywane były do pliku. 
+
+Takie podejście znacząco ułatwia testowanie algorytmu \textit{FTSG} z uwagi na jego złożoność obliczeniową. Dla sekwencji testowych w rozdzielczości $320 \times 240$ model programu przetwarza obraz z prędkością około 5 klatek na sekundę. W konsekwencji przetestowanie wszystkich sekwencji trwa około 4 godzin. Stworzone środowisko testowe jest w stanie przeprowadzić cały proces automatycznie bez jakiegokolwiek nadzoru. Dodatkową korzyścią jest prosta weryfikacja wprowadzonych modyfikacji. Środowisko testowe kompleksowo udziela odpowiedzi na pytanie, czy wprowadzona zmiana w algorytmie polepsza albo pogarsza jakość segmentacji obiektów pierwszoplanowych. Poza tym testowanie na jednej czy nawet dwóch sekwencjach może być niebezpieczne, gdyż możemy przypadkowo wprowadzić poprawki, które sprawdzają się jedynie dla tej szczególnej sekwencji testowej.
+
+\section{Podział pracy}
+
+Piotr Janus -- algorytm \textit{Flux Tensor}, fuzja metod \textit{FT} i \textit{Split Gaussian Models} (model programowy), analiza artykułu i sformułowanie pytań do autorów, przygotowanie prezentacji i niniejszego raportu.
+
+Kamil Piszczek --  \textit{Split Gaussian Models} (model programowy), zaprojektowanie i implementacja środowiska testowego,  analiza artykułu i sformułowanie pytań do autorów i niniejszego raportu. 
 
 \end{document}
