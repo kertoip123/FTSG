@@ -1,5 +1,5 @@
 \documentclass[10pt,a4paper]{article}
-\usepackage[polish]{babel}
+\usepackage[english,polish]{babel}
 \usepackage[utf8]{inputenc}
 \usepackage{polski}
 \usepackage{indentfirst}
@@ -14,15 +14,39 @@
 \usepackage{amsmath}
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
-\usepackage{tabto}
+
+\usepackage{listings}
+\lstloadlanguages{TeX}
+\lstset{
+  literate={ą}{{\k{a}}}1
+           {ć}{{\'c}}1
+           {ę}{{\k{e}}}1
+           {ó}{{\'o}}1
+           {ń}{{\'n}}1
+           {ł}{{\l{}}}1
+           {ś}{{\'s}}1
+           {ź}{{\'z}}1
+           {ż}{{\.z}}1
+           {Ą}{{\k{A}}}1
+           {Ć}{{\'C}}1
+           {Ę}{{\k{E}}}1
+           {Ó}{{\'O}}1
+           {Ń}{{\'N}}1
+           {Ł}{{\L{}}}1
+           {Ś}{{\'S}}1
+           {Ź}{{\'Z}}1
+           {Ż}{{\.Z}}1,
+  basicstyle=\footnotesize\ttfamily,
+}
 
 \frenchspacing
+\usepackage{tabto}
 
 \usepackage{titlesec}
 \titlelabel{\thetitle.\quad}
 
 \begin{document}
-	\title{Programowo - Sprzętowa Realizacja Algorytmów -- raport  \\  Algorytm Flux Tensor with Split Gaussian models}
+	\title{PSRA - raport  \\  Algorytm Flux Tensor with Split Gaussian models}
 	\author{Piotr Janus, Kamil Piszczek}
 	\date{}
 	\maketitle
@@ -30,7 +54,7 @@
 
 \section{Wprowadzenie}
 
-Opracowanie i implementacja sprzętowa algorytmu \textit{FTSG}, było głównym celem przedstawianego projektu. Algorytm ten jest metodą hybrydową, dzięki czemu posiada wszystkie zalety algorytmów \textit{Flux Tensor} (rozdział \ref{sec:FluxTensor_Teoria}) oraz \textit{Split Gaussian Models} (rozdział \ref{sec:GMMsplit}).   
+Opracowanie i implementacja sprzętowa algorytmu \textit{FTSG}, było głównym celem przedstawianego projektu. Algorytm ten jest metodą hybrydową, dzięki czemu posiada wszystkie zalety algorytmów \textit{Flux Tensor} (rozdział \ref{sec:FluxTensor_Teoria}) oraz \textit{Split Gaussian Models} (rozdział \ref{sec:split_gaussian}).   
 
 Obie wykorzystywane metody nie są idealne, jednak wzajemnie się uzupełniają przez co można opracować algorytm wykorzystujący je jednocześnie. Metoda \textit{Flux Tensor} nie daje możliwości wykrywania obiektów statycznych. Zapewnia jednak odporność na zakłócenia spowodowane zmianami oświetlenia, a częściowo także przez występowanie cieni. Przeciwieństwem jest algorytm wykorzystujący rozkłady Gaussa, o ograniczonej odporności na zakłócenia, ale dający możliwość wykrywania obiektów statycznych. 
 
@@ -224,6 +248,86 @@ W wyniku otrzymuje się ślad macierzy $Tr(J_F)$.
 	\label{fig:jpk_spatial_averaging}
 \end{figure}
 
+\section{Metoda Split Gaussian Models}
+\label{sec:split_gaussian}
+
+\subsection{Opis Algorytmu}
+
+\textit{Split Gaussian Models} jest modyfikacją metody \textit{Gaussian Mixture Models}, która jest powszechnie stosowana w systemach wizyjnych realizujących segmentację obiektów pierwszoplanowych. Działanie algorytmu jest oparte na sukcesywnie budowanym, wielowartościowym modelu tła oraz pierwszego planu. Model ten, indywidualny dla każdego piksela na obrazie, jest złożony z pewnej liczby rozkładów Gaussa. Każdy z nich charakteryzuje się wagą, średnią oraz odchyleniem standardowym. Budowany model jest więc modelem statystycznym.
+
+W porównaniu z \textit{Gaussian Mixture Models}, którego model stanowi mieszaninę rozkładów Gaussa reprezentujących pierwszy plan oraz tło, w metodzie \textit{Split Gaussian Models} zdefiniowane są dwa odzielne modele: obiektów pierwszoplanowych oraz tła. Dodatkowo, w tym drugim modelu liczba rozkładów Gaussa zmienia się dynamicznie. Takie zmiany zapobiegają zjawisku, w którym rozkłady Gaussa reprezentujące pierwszy plan zaczynają dominować w modelu i pogarszać otrzymywane rezultaty przetwarzania. Następny akapit przedstawia szczegółowy opis algorytmu.
+
+Wektor zawierający składowe \textit{RGB} piksela o współrzędnych $x$, $y$ w czasie $t$ oznaczmy jako $I_t(x,y)$. Następnie sprawdzamy, czy piksel pasuje do któregoś ze zdefiniowanych rozkładów Gaussa reprezentujących tło (oznaczmy liczbę takich rozkładów jako $K$). Metryka wykorzystana w teście dopasowania wygląda następująco:
+
+\begin{equation}
+D_{min}(x,y) = min_{t \in K} \: max_{j \in C} ((I_t(x,y)-\mu_{i,j})^2-T_b \cdot \sigma ^2)
+\label{equ:d_min}
+\end{equation}
+
+\noindent Gdzie $\sigma = \sum_{i}^{k} \omega_i \sigma_i$. $T_b$ jest z góry ustalonym progiem (domyślnie $3$), natomiast $\mu_{i,j}$ oznacza wartość średnią dla danego rozkładu i składowej RGB. Dla uproszczenia przyjmujemy, że dla wszystkich trzech składowych odchylenie standardowe i wariancja są takie same. Piksel zostaje zaklasyfikowany jako pierwszoplanowy, jeżeli nie pasuje do żadnego z rozkładów Gaussa:
+
+\begin{equation}
+F_B(x,y) = 
+\begin{cases}
+1 & \quad \text{jeżeli } D_{min}(x,y)>0\\
+0 & \quad \text{w przeciwnym przypadku}\\
+\end{cases}
+\label{equ:F_B}
+\end{equation}
+
+Model reprezentujący pierwszyplan, składający się tylko z jednego rozkładu Gaussa, jest używany do rodzielnia rzeczywistych obiektów statyczny od różnego rodzaju zakłóceń. Jeżeli piksel zostanie zaklasyfikowany jako element tła przez metodę \textit{Flux Tensor} (rozdział \ref{sec:FluxTensor_Teoria}) i jako element pierwszego planu przez model reprezentujący tło ($F_B = 1$) to ostateczna klasyfikacja (jako pierwszoplanowy element statyczny bądź zakłócenia) odbywa się z wykorzystaniem modelu pierwszego planu:
+
+\begin{equation}
+F_S(x,y) =
+\begin{cases}
+1 & \quad \text{jeżeli } F_{amb}(x,y)=1 \quad \text{i} \quad I_t(x,y)-\mu_f(x,y) < T_f \\
+0 & \quad \text{w przeciwnym przypadku}\\
+\end{cases}
+\label{equ:F_S}
+\end{equation}
+
+\noindent Gdzie $F_{amb}$ określa czy wystąpiła sprzeczność w klasyfikacji pomiędzy algorytmem \textit{Flux Tensor} i modelem tła. $T_f$ jest z góry ustalonym progiem (domyślnie $20$), natomiast $\mu_f(x,y)$ aktualną wartością średnią.
+
+\subsection{Aktualizacja rozkładów Gaussa}
+
+Wykorzystana została tzw. konserwatywna metoda aktualizacji, polegająca na tym, że odbywa się ona tylko wtedy gdy rozpatrywany piksel pasuje do danego modelu. Model tła aktualizowany jest tylko wtedy, gdy maska $M$ zdefiniowana przez wzór \ref{equ:update_mask} ma wartość $1$, w przeciwnym wypadku aktualizowany jest jedynie model pierwszoplanowy.
+
+\begin{equation}
+M = (1-F_B) \lor (F_{amb} - F_S)
+\label{equ:update_mask}
+\end{equation}
+
+\noindent Aktualizację wartości średnich i odchylenia standardowego przedstawiają odpowiednio wzory (\ref{equ:mean_update}) i (\ref{equ:sigma_update}).
+
+\begin{equation}
+\mu_t = (1-\alpha)\mu_{t-1} + \alpha I_t
+\label{equ:mean_update}
+\end{equation}
+\begin{equation}
+\sigma_t^2 = (1-\alpha) \sigma_{t-1}^2 + (I_t-\mu)^T \alpha (T_t - \mu)
+\label{equ:sigma_update}
+\end{equation}
+
+\noindent W przypadku rozkładu dla którego wartość metryki, zdefiniowanej przez wzór (\ref{equ:d_min}), była najmniejsza, waga aktualizowana jest według wzoru (\ref{equ:w_update1}) w przeciwnym wypadku wykorzystywana jest zależność (\ref{equ:w_update2}).
+
+\begin{equation}
+\omega_{i,t} = (1-\alpha) \omega_{i,t-1} + \alpha
+\label{equ:w_update1}
+\end{equation}
+\begin{equation}
+\omega_{i,t} = (1-\alpha) \omega_{i,t-1}
+\label{equ:w_update2}
+\end{equation}
+
+\noindent Gdzie $\alpha$ oznacza współczynnik uczenia się, domyślnie wynosi on $0.004$ dla modelu tła i $0.5$ dla modelu pierwszegoplanu.
+
+
+\subsection{Architektura}
+
+Ze względu na to, że model programowy metody \textit{Split Gaussian Models} nie dał oczekiwanych rezultatów w stosunku do wyników otrzymanych w artykule opisującym ten algorytm, implementacja sprzętowa nie została zrealizowana.
+
+Gotowa implementacja sprzętowa metody \textit{Gaussian Mixture Models} z pewnością ułatwi w przyszłości przeniesienie na platformę FPGA naprawionego algorytmu \textit{Split Gaussian Model}. Moduł realizujący sieć sortującą, może być wykorzystany  do implementacji zmienionej metryki (\ref{equ:d_min}). Dodatkowo, aby zaimplementować mechanizm zmieniającej się liczby rozkładów Gaussa, należałoby przeznaczyć conajmniej jeden bit do oznaczenia, który z rozkładów Gaussa został zaalokowany, a który zdealokowany.
+
 \section{Fuzja metody Flux Tensor i Split Gaussian Models}
 \label{sec:ftsg_fuzja}
 Schemat wykonywanych operacji został zaprezentowany na rysunku \ref{fig:FTSG_flow}. Obraz analizowany jest równolegle za pomocą trzech modeli. Pierwszy jest oczywiście model \textit{Flux Tensor}, drugi to model tła reprezentowany przez zmienną liczbę rozkładów Gaussa, natomiast trzecim jest model pierwszoplanowy składający się z jednego rozkładu (przykładowe maski binarne wszystkich trzech modeli zostały przedstawione na rys. \ref{fig:ftsg_models}). 
@@ -254,7 +358,7 @@ gdzie:\\
 		
 		\begin{figure}[h]
 				\centering
-				\includegraphics[scale=0.65]{img/FTSG_models.png}
+				\includegraphics[scale=0.65]{img/ftsg_models.png}
 				\caption{Przykładowe maski binarne otrzymane odpowiednio dla modelu tła, metody \textit{Flux Tensor} i modelu pierwszego planu}
 				\label{fig:ftsg_models}
 		\end{figure}
@@ -277,7 +381,7 @@ Dodatkowa analiza ma miejsce w przypadku, gdy wyniki obu modeli są sprzeczne. J
 				\label{fig:ftsg_halo}
 		\end{figure}
 
-W przypadku odwrotnym, czyli $F_F = 0 \land F_B = 1$, wykorzystywany jest model pierwszoplanowy i na jego podstawie wyznaczane jest ostateczne dopasowanie. Jeżeli dla zdefiniowanego w tym modelu rozkładu Gaussa piksel wejściowy spełnia warunek (\ref{equ:GMM_mahalanobis}) to zostaje zakwalifikowany jako element statyczny pierwszego planu ($F_S = 1$). Model pierwszoplanowy jest aktualizowany tylko wtedy, gdy prawdziwy jest warunek $F_F = 0 \land F_B = 1 \land F_S = 1$. W przeciwnym wypadku ma miejsce aktualizacja modelu tła. Przykład detekcji obszaru statycznego został przedstawiony na rys. \ref{fig:ftsg_static}.
+W przypadku odwrotnym, czyli $F_F = 0 \land F_B = 1$, wykorzystywany jest model pierwszoplanowy i na jego podstawie wyznaczane jest ostateczne dopasowanie. Jeżeli dla zdefiniowanego w tym modelu rozkładu Gaussa piksel wejściowy spełnia warunek (\ref{equ:F_S}) to zostaje zakwalifikowany jako element statyczny pierwszego planu ($F_S = 1$). Model pierwszoplanowy jest aktualizowany tylko wtedy, gdy prawdziwy jest warunek $F_F = 0 \land F_B = 1 \land F_S = 1$. W przeciwnym wypadku ma miejsce aktualizacja modelu tła. Przykład detekcji obszaru statycznego został przedstawiony na rys. \ref{fig:ftsg_static}.
 
 		\begin{figure}[h]
 				\centering
@@ -295,28 +399,28 @@ Taka klasyfikacja pozwala wyeliminować większość szumów powstałych w model
 				\label{fig:ftsg_illumination}
 		\end{figure}
 
-\section{Detekcja obiektów zatrzymanych}
-\label{sec:detekcja_statyczna}
+% \section{Detekcja obiektów zatrzymanych}
+% \label{sec:detekcja_statyczna}
 
-W poprzednim podrozdziale zostało wspomniane, że model pierwszego planu klasyfikuje jako obiekt statyczny także obszar odsłoniętego tła. Jest to wspominany wielokrotnie efekt ,,duchów''. Może on zostać częściowo wyeliminowany poprzez dobranie odpowiedniego parametru $\alpha$. Niestety, ze względu na specyfikę metod wykorzystujących rozkłady Gaussa, nie jest możliwa jego całkowita eliminacja. W~tym celu został opracowany dodatkowy mechanizm rozróżniania rzeczywistych obiektów zatrzymanych od odsłoniętego tła. 
+% W poprzednim podrozdziale zostało wspomniane, że model pierwszego planu klasyfikuje jako obiekt statyczny także obszar odsłoniętego tła. Jest to wspominany wielokrotnie efekt ,,duchów''. Może on zostać częściowo wyeliminowany poprzez dobranie odpowiedniego parametru $\alpha$. Niestety, ze względu na specyfikę metod wykorzystujących rozkłady Gaussa, nie jest możliwa jego całkowita eliminacja. W~tym celu został opracowany dodatkowy mechanizm rozróżniania rzeczywistych obiektów zatrzymanych od odsłoniętego tła. 
 
-Opisywana metoda wykorzystuje trzy obrazy: wejściowy, model tła oraz maskę binarną otrzymaną z modelu pierwszego planu. Kolejnym krokiem jest wykrycie krawędzi (metodą Sobela) na wszystkich trzech obrazach. Ostatnią czynnością jest porównanie i analiza rezultatów. Jeżeli kształt krawędzi na obrazie wejściowym i wygenerowanym pierwszym planie jest podobny, obiekt może zostać zinterpretowany jako statyczny (tj. zatrzymany obiekt). Natomiast, jeśli krawędzie w modelu tła oraz pierwszego planu są do siebie zbliżone, to wykryty obiekt jest klasyfikowany jako odsłonięte tło. Na rysunkach \ref{stoppedObj} i~\ref{revBg} zostały przedstawione przykłady ilustrujące oba przypadki.
+% Opisywana metoda wykorzystuje trzy obrazy: wejściowy, model tła oraz maskę binarną otrzymaną z modelu pierwszego planu. Kolejnym krokiem jest wykrycie krawędzi (metodą Sobela) na wszystkich trzech obrazach. Ostatnią czynnością jest porównanie i analiza rezultatów. Jeżeli kształt krawędzi na obrazie wejściowym i wygenerowanym pierwszym planie jest podobny, obiekt może zostać zinterpretowany jako statyczny (tj. zatrzymany obiekt). Natomiast, jeśli krawędzie w modelu tła oraz pierwszego planu są do siebie zbliżone, to wykryty obiekt jest klasyfikowany jako odsłonięte tło. Na rysunkach \ref{stoppedObj} i~\ref{revBg} zostały przedstawione przykłady ilustrujące oba przypadki.
 
-\begin{figure}[h]
-	\centering
-    \includegraphics[scale=0.5]{img/stoppedObject.png}
-		\caption{obiekt zatrzymany}
-		\label{stoppedObj}
-\end{figure}
+% \begin{figure}[h]
+% 	\centering
+%     \includegraphics[scale=0.5]{img/stoppedObject.png}
+% 		\caption{obiekt zatrzymany}
+% 		\label{stoppedObj}
+% \end{figure}
 
-\begin{figure}[h]
-		\centering
-		\includegraphics[scale=0.5]{img/revealedBg.png}
-		\caption{odsłonięte tło}
-		\label{revBg}
-\end{figure}
+% \begin{figure}[h]
+% 		\centering
+% 		\includegraphics[scale=0.5]{img/revealedBg.png}
+% 		\caption{odsłonięte tło}
+% 		\label{revBg}
+% \end{figure}
 
-Na rysunku \ref{stoppedObj} umieszczone zostały w pierwszym rzędzie kolejno: obrazek wejściowy, model tła oraz maska otrzymana przez model pierwszoplanowy. W~rzędzie drugim znajdują się obrazy po zastosowaniu detekcji krawędzi. Przedstawiają one zbliżenie na obszar, który został zakwalifikowany jako statyczny przez model pierwszoplanowy i konieczne jest zastosowanie algorytmu detekcji. Jak łatwo zauważyć krawędzie modelu pierwszoplanowego pokrywają się z~krawędziami obrazu wejściowego. Zatem obszar ten jest obiektem statycznym. Rysunek \ref{revBg} przedstawia analogiczną sytuację, jednak w~tym przypadku krawędzie modelu tła i modelu pierwszoplanowego są zbliżone, zatem obszar ten należy interpretować jako odsłonięty fragment tła. Takie działanie pozwala wyeliminować obszary błędnie zakwalifikowane, na podstawie modelu pierwszego planu, jako tło.
+% Na rysunku \ref{stoppedObj} umieszczone zostały w pierwszym rzędzie kolejno: obrazek wejściowy, model tła oraz maska otrzymana przez model pierwszoplanowy. W~rzędzie drugim znajdują się obrazy po zastosowaniu detekcji krawędzi. Przedstawiają one zbliżenie na obszar, który został zakwalifikowany jako statyczny przez model pierwszoplanowy i konieczne jest zastosowanie algorytmu detekcji. Jak łatwo zauważyć krawędzie modelu pierwszoplanowego pokrywają się z~krawędziami obrazu wejściowego. Zatem obszar ten jest obiektem statycznym. Rysunek \ref{revBg} przedstawia analogiczną sytuację, jednak w~tym przypadku krawędzie modelu tła i modelu pierwszoplanowego są zbliżone, zatem obszar ten należy interpretować jako odsłonięty fragment tła. Takie działanie pozwala wyeliminować obszary błędnie zakwalifikowane, na podstawie modelu pierwszego planu, jako tło.
 
 \section{Testy}
 
@@ -359,7 +463,7 @@ Do weryfikacji modelu programowego algorytmu stworzone zostało automatyczne śr
 
 \noindent Po przeprowadzeniu testów dla wszystkich sekwencji testowych generowany był raport zawierający współczynniki jakości każdej sekwencji testowej. Dana zapisywane były do pliku. 
 
-Takie podejście znacząco ułatwia testowanie algorytmu \textit{FTSG} z uwagi na jego złożoność obliczeniową. Dla sekwencji testowych w rozdzielczości $320 \times 240$ model programu przetwarza obraz z prędkością około 5 klatek na sekundę. W konsekwencji przetestowanie wszystkich sekwencji trwa około 4 godzin. Stworzone środowisko testowe jest w stanie przeprowadzić cały proces automatycznie bez jakiegokolwiek nadzoru. Dodatkową korzyścią jest prosta weryfikacja wprowadzonych modyfikacji. Środowisko testowe kompleksowo udziela odpowiedzi na pytanie, czy wprowadzona zmiana w algorytmie polepsza albo pogarsza jakość segmentacji obiektów pierwszoplanowych. Poza tym testowanie na jednej czy nawet dwóch sekwencjach może być niebezpieczne, gdyż możemy przypadkowo wprowadzić poprawki, które sprawdzają się jedynie dla tej szczególnej sekwencji testowej.
+Takie podejście znacząco ułatwia testowanie algorytmu \textit{FTSG} z uwagi na jego złożoność obliczeniową. Dla sekwencji testowych w rozdzielczości $320 \times 240$ model programu przetwarza obraz z prędkością około 5 klatek na sekundę. W konsekwencji przetestowanie wszystkich sekwencji trwa około 4 godzin. Stworzone środowisko testowe jest w stanie przeprowadzić cały proces automatycznie bez jakiegokolwiek nadzoru. Dodatkową korzyścią jest prosta weryfikacja wprowadzonych modyfikacji. Środowisko testowe kompleksowo udziela odpowiedzi na pytanie, czy wprowadzona zmiana w algorytmie polepsza albo pogarsza jakość segmentacji obiektów pierwszoplanowych. Poza tym, ręczne testowanie na jednej czy nawet dwóch sekwencjach może być niebezpieczne, gdyż możemy przypadkowo wprowadzić poprawki, które sprawdzają się jedynie dla tej szczególnej sekwencji testowej.
 
 \section{Podział pracy}
 
